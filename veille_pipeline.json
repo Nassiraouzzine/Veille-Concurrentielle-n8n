@@ -1,0 +1,411 @@
+{
+  "name": "Veille IA - Pipeline ETL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "23f72d96-364f-45c2-8e6f-7767bf1c414b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "545fc36a-2cb7-4ee9-aabb-484fbc7ffcf6",
+      "name": "Webhook",
+      "webhookId": "23f72d96-364f-45c2-8e6f-7767bf1c414b"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyse cet article :\n\nTitre : {{ $json.title }}\nContenu : {{ $json.content }}\nSource : {{ $json.source }}\nDate : {{ $json.date }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Tu es un expert en veille concurrentielle dans le secteur {{ $('Webhook').first().json.body.secteur }}. Ton objectif est d'analyser un article et d'extraire les informations clés concernant ce concurrent : {{ $json.concurrent }}\n\nRègles strictes :\n- Réponds UNIQUEMENT en JSON valide, sans texte avant ni après\n- Réponds TOUJOURS en français, même si l'article est dans une autre langue\n- Ne jamais inventer d'informations qui ne sont pas dans l'article\n- Maximum 3 phrases pour le résumé\n- Si l'article n'est pas pertinent par rapport au secteur, mets importance à 0\n- Identifie le concurrent concerné si possible, sinon mets \"Non identifié\"\n\nFormat de réponse obligatoire :\n{\n  \"résumé\": \"résumé en 3 phrases maximum\",\n  \"catégorie\": \"Produit ou Prix ou Marketing ou Innovation ou Partenariat\",\n  \"concurrent\": \"nom du concurrent ou Non identifié\",\n  \"importance\": nombre entre 0 et 10\n}"
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=Analyse cet article :\nTitre : {{ $json.title }}\nContenu : {{ $json.content }}\nSource : {{ $json.source }}\nDate : {{ $json.date }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        512,
+        0
+      ],
+      "id": "f96d79c5-ca58-4d1c-9f68-7f7c5a470ab7",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        512,
+        176
+      ],
+      "id": "5d45728a-5bbf-4a18-bb5e-90be6690500f",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "EctfJm2i8DMx2SjX",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "query": "={{ $json.concurrent }} actualités récentes {{ $json.secteur }} {{ $json.mots_cles }}",
+        "options": {
+          "maxResults": 20,
+          "searchRecencyFilter": "day"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexity",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "46314a1f-7288-46b9-af1c-8168b477755c",
+      "name": "Search the web",
+      "credentials": {
+        "perplexityApi": {
+          "id": "ABpOR89bJpAbXg1c",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const splitItems = $('Code in JavaScript3').all();\nconst allResults = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  const results = data.results || [];\n  const concurrent = splitItems[i] ? splitItems[i].json.concurrent : \"\";\n  \n  for (const item of results) {\n    let sourceName = \"\";\n    if (item.url) {\n      const match = item.url.match(/https?:\\/\\/(?:www\\.)?([^\\/]+)/);\n      sourceName = match ? match[1] : \"\";\n    }\n    \n    allResults.push({\n      json: {\n        title: item.title || (item.snippet ? item.snippet.substring(0, 100) : \"Article\"),\n        content: item.snippet || \"\",\n        source: sourceName,\n        date: item.last_updated || \"\",\n        url: item.url || \"\",\n        secteur: $('Webhook').first().json.body.secteur,\n        concurrents: $('Webhook').first().json.body.concurrents,\n        concurrent: concurrent,\n        email: $('Webhook').first().json.body.email\n      }\n    });\n  }\n}\n\nreturn allResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "0a36efb1-10d7-4778-81f5-015c04abe4de",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.emailTo }}",
+        "subject": "=Rapport de Veille Concurrentielle - {{ $('Webhook').first().json.body.secteur }}",
+        "message": "={{ $json.htmlContent }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        -80
+      ],
+      "id": "f90bf218-78b7-4c07-82d8-6c4c92c11fbd",
+      "name": "Send a message",
+      "webhookId": "df9896ae-f2e9-4ead-9cdd-0857465f95ba",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SoS7eI6Re3YJxdls",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json.body;\nconst today = new Date().toLocaleDateString('fr-FR');\n\nconst results = [];\n\nfor (const item of items) {\n  let parsed;\n  try {\n    parsed = JSON.parse(item.json.text);\n  } catch (e) {\n    parsed = { résumé: item.json.text, catégorie: \"Inconnue\", concurrent: \"Non identifié\", importance: 0 };\n  }\n\n  // Filtre : ignore les articles non pertinents\n  if (parsed.importance === 0 || parsed.concurrent === \"Non identifié\") continue;\n\n  results.push({\n    json: {\n      Date: today,\n      Nom: webhookData.nom,\n      Secteur: webhookData.secteur,\n      Concurrent: parsed.concurrent,\n      Catégorie: parsed.catégorie || \"Inconnue\",\n      Résumé: parsed.résumé || \"\",\n      Importance: parsed.importance,\n      Email: webhookData.email,\n      isEmpty: false\n    }\n  });\n}\n\n// Si aucun résultat pertinent, retourner un item vide pour ne pas bloquer le pipeline\nif (results.length === 0) {\n  return [{\n    json: {\n      Date: today,\n      Nom: webhookData.nom,\n      Secteur: webhookData.secteur,\n      Concurrent: \"Aucun\",\n      Catégorie: \"N/A\",\n      Résumé: \"Aucune actualité pertinente trouvée aujourd'hui.\",\n      Importance: 0,\n      Email: webhookData.email,\n      isEmpty: true\n    }\n  }];\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "113a3064-282d-4fa7-a483-c6a7656777ad",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst concurrents = body.concurrents.split(',').map(c => c.trim());\n\nreturn concurrents.map(concurrent => ({\n  json: {\n    concurrent: concurrent,\n    nom: body.nom,\n    email: body.email,\n    secteur: body.secteur,\n    mots_cles: body.mots_cles\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ],
+      "id": "5981fee1-0899-4c0f-8622-eca5164622d9",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MjD5x-Xhu6o2z0tPoBsgObCSpcuFTlj9cFaIJ7FkdlM",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Feuille 1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Secteur",
+              "displayName": "Secteur",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Concurrent",
+              "displayName": "Concurrent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Catégorie",
+              "displayName": "Catégorie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Résumé",
+              "displayName": "Résumé",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Importance",
+              "displayName": "Importance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "isEmpty",
+              "displayName": "isEmpty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        96
+      ],
+      "id": "1488372a-5b81-4bc4-8932-c9b1cd5550f6",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NKmvPWZeDOfQK0WW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json.body;\n\n// Vérifie si tous les items sont vides (isEmpty = true)\nconst isEmpty = items.every(item => item.json.isEmpty === true);\n\n// Filtre : garde uniquement les articles pertinents\nconst pertinents = items.filter(item => \n  item.json.Importance > 0 && \n  item.json.Concurrent !== \"Non identifié\" &&\n  item.json.Concurrent !== \"Aucun\"\n);\n\n// Groupe les résultats par concurrent\nconst parConcurrent = {};\nfor (const item of pertinents) {\n  const c = item.json.Concurrent;\n  if (!parConcurrent[c]) parConcurrent[c] = [];\n  parConcurrent[c].push(item.json);\n}\n\n// Construit le HTML par concurrent\nlet resultsHtml = '';\nif (isEmpty || Object.keys(parConcurrent).length === 0) {\n  resultsHtml = `\n    <div style=\"text-align:center;padding:30px;background:#f9f9f9;border-radius:8px;\">\n      <p style=\"font-size:40px;\">🔍</p>\n      <p style=\"color:#888;font-style:italic;font-size:16px;\">Aucune actualité pertinente trouvée aujourd'hui pour les concurrents surveillés.</p>\n      <p style=\"color:#aaa;font-size:13px;\">Réessayez demain ou ajustez vos mots-clés de recherche.</p>\n    </div>\n  `;\n} else {\n  for (const [concurrent, articles] of Object.entries(parConcurrent)) {\n    resultsHtml += `\n      <div style=\"margin-bottom:30px;\">\n        <h3 style=\"color:#1a73e8;border-bottom:2px solid #1a73e8;padding-bottom:5px;\">${concurrent}</h3>\n    `;\n    for (const r of articles) {\n      const scoreColor = r.importance >= 7 ? '#e53935' : r.importance >= 4 ? '#fb8c00' : '#43a047';\n      resultsHtml += `\n        <div style=\"margin-bottom:15px;padding:15px;border-left:4px solid ${scoreColor};background:#f9f9f9;border-radius:4px;\">\n          <div style=\"display:flex;justify-content:space-between;align-items:center;\">\n            <span style=\"background:#e8f0fe;color:#1a73e8;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;\">${r.Catégorie}</span>\n            <span style=\"background:${scoreColor};color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;\">Score : ${r.Importance}/10</span>\n          </div>\n          <p style=\"margin-top:10px;color:#333;line-height:1.6;\">${r.Résumé}</p>\n        </div>\n      `;\n    }\n    resultsHtml += `</div>`;\n  }\n}\n\nconst today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nconst fullHtml = `\n  <div style=\"font-family:Arial,sans-serif;max-width:700px;margin:0 auto;\">\n    \n    <!-- En-tête -->\n    <div style=\"background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:30px;border-radius:8px 8px 0 0;\">\n      <h1 style=\"color:white;margin:0;font-size:22px;\">📊 Rapport de Veille Concurrentielle</h1>\n      <p style=\"color:#bbdefb;margin:5px 0 0 0;font-size:14px;\">${today}</p>\n    </div>\n    \n    <!-- Infos de la veille -->\n    <div style=\"background:#e8f0fe;padding:20px;border-left:1px solid #ddd;border-right:1px solid #ddd;\">\n      <table style=\"width:100%;font-size:14px;color:#333;\">\n        <tr>\n          <td style=\"padding:5px 0;\"><strong>👤 Destinataire</strong></td>\n          <td style=\"padding:5px 0;\">${webhookData.nom}</td>\n        </tr>\n        <tr>\n          <td style=\"padding:5px 0;\"><strong>🏭 Secteur surveillé</strong></td>\n          <td style=\"padding:5px 0;\">${webhookData.secteur}</td>\n        </tr>\n        <tr>\n          <td style=\"padding:5px 0;\"><strong>🏢 Concurrents suivis</strong></td>\n          <td style=\"padding:5px 0;\">${webhookData.concurrents}</td>\n        </tr>\n        <tr>\n          <td style=\"padding:5px 0;\"><strong>🔍 Mots-clés</strong></td>\n          <td style=\"padding:5px 0;\">${webhookData.mots_cles}</td>\n        </tr>\n      </table>\n    </div>\n    \n    <!-- Résultats -->\n    <div style=\"background:white;padding:25px;border:1px solid #ddd;border-top:none;\">\n      <h2 style=\"color:#1a73e8;margin-top:0;\">📰 Actualités détectées</h2>\n      ${resultsHtml}\n    </div>\n    \n    <!-- Pied de page -->\n    <div style=\"background:#f5f5f5;padding:15px;text-align:center;border-radius:0 0 8px 8px;border:1px solid #ddd;border-top:none;\">\n      <p style=\"color:#888;font-size:12px;margin:0;\">⚡ Rapport généré automatiquement par le système de Veille IA — Value IT</p>\n    </div>\n    \n  </div>\n`;\n\nreturn [{ json: { emailTo: webhookData.email, htmlContent: fullHtml } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -80
+      ],
+      "id": "6c19763f-cf73-4b2a-ab44-80350c0b0764",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search the web": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Search the web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9ee700a8-dae2-46cf-a815-e32c2cb689fe",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2c261225f3fced92e99e6ac46ada4a6cc046dde133829be4550f3e0509b776c8"
+  },
+  "nodeGroups": [],
+  "id": "aGe2dzJ5izN7yer1",
+  "tags": []
+}

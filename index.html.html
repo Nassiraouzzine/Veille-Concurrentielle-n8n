@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veille Concurrentielle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 6px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      color: #1a1a2e;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .divider {
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 2px;
+      margin-bottom: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e8e8e8;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #333;
+      transition: border-color 0.3s;
+      outline: none;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #667eea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.3s, transform 0.2s;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .success {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      background: #f0fff4;
+      border: 2px solid #68d391;
+      border-radius: 10px;
+      margin-top: 16px;
+      color: #276749;
+      font-weight: 600;
+    }
+
+    .error {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      background: #fff5f5;
+      border: 2px solid #fc8181;
+      border-radius: 10px;
+      margin-top: 16px;
+      color: #c53030;
+      font-weight: 600;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🔍 Veille</div>
+      <h1>Système de Veille Concurrentielle</h1>
+      <p>Remplissez le formulaire pour lancer votre veille personnalisée</p>
+    </div>
+    <div class="divider"></div>
+
+    <form id="veilleForm">
+
+      <div class="row">
+        <div class="form-group">
+          <label>Nom</label>
+          <input type="text" name="nom" placeholder="Votre nom" required>
+        </div>
+        <div class="form-group">
+          <label>Prénom</label>
+          <input type="text" name="prenom" placeholder="Votre prénom" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email professionnel</label>
+        <input type="email" name="email" placeholder="votre@email.com" required>
+      </div>
+
+      <div class="form-group">
+        <label>Secteur à surveiller</label>
+        <input type="text" name="secteur" placeholder="ex: Intelligence Artificielle, Fintech, Santé..." required>
+      </div>
+
+      <div class="form-group">
+        <label>Concurrents à surveiller</label>
+        <textarea name="concurrents" placeholder="ex: OpenAI, Google, Microsoft, Anthropic..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Mots-clés de recherche</label>
+        <textarea name="mots_cles" placeholder="ex: OpenAI OR Gemini OR AI automation..." required></textarea>
+      </div>
+
+      <button type="submit" class="btn">🚀 Lancer la veille</button>
+
+      <div class="success" id="success">
+        ✅ Veille lancée avec succès ! Vous recevrez votre rapport par email.
+      </div>
+      <div class="error" id="error">
+        ❌ Une erreur s'est produite. Vérifiez que n8n est bien lancé.
+      </div>
+
+    </form>
+
+    <div class="footer">
+      Projet de démonstration — système de veille automatisée propulsé par n8n &amp; IA
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('veilleForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      document.getElementById('success').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+
+      const data = {
+        nom: e.target.nom.value + ' ' + e.target.prenom.value,
+        email: e.target.email.value,
+        secteur: e.target.secteur.value,
+        concurrents: e.target.concurrents.value,
+        mots_cles: e.target.mots_cles.value
+      };
+
+      // À remplacer par l'adresse de production du webhook n8n
+      fetch('https://VOTRE-SERVEUR-N8N/webhook/veille', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Erreur ' + response.status);
+        document.getElementById('success').style.display = 'block';
+        e.target.reset();
+      })
+      .catch(error => {
+        document.getElementById('error').style.display = 'block';
+      });
+    });
+  </script>
+</body>
+</html>
